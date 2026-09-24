@@ -71,7 +71,8 @@ public class MarketplaceService {
                 throw new InvalidOrderException("Product SKU not found: " + sku);
             }
             if (product.getStock() < requestedQty) {
-                throw new InsufficientStockException(sku, requestedQty, product.getStock());
+                throw new InsufficientStockException("Insufficient stock for " + sku
+                        + ": requested " + requestedQty + ", available " + product.getStock() + ".");
             }
         }
 

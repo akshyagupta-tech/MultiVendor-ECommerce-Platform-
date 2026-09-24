@@ -1,5 +1,7 @@
 package com.ecommerce.model;
 
+import com.ecommerce.exceptions.InsufficientStockException;
+
 public class Product implements Comparable<Product> {
     private String sku;
     private String title;
@@ -21,7 +23,13 @@ public class Product implements Comparable<Product> {
     public synchronized int getStock() { return stock; }
     public String getVendorId() { return vendorId; }
 
-    public synchronized void decrementStock(int qty) { this.stock -= qty; }
+    public synchronized void decrementStock(int qty) throws InsufficientStockException {
+        if (qty <= 0 || qty > stock) {
+            throw new InsufficientStockException("Insufficient stock for " + sku
+                    + ": requested " + qty + ", available " + stock + ".");
+        }
+        this.stock -= qty;
+    }
     public synchronized void incrementStock(int qty) { this.stock += qty; }
 
     @Override
