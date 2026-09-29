@@ -1,0 +1,5 @@
+SKU,Title,Price,Stock,VendorId
+SKU-101,Handmade Clay Pot,250.0,15,VEND-001
+SKU-102,Madhubani Bookmark,120.0,4,VEND-002
+SKU-103,Boho Wooden Coaster,340.0,10,VEND-001
+SKU-104,Lippan Wall Decor,890.0,2,VEND-003
