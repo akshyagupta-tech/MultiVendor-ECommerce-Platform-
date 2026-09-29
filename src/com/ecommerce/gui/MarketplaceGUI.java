@@ -16,14 +16,14 @@ public class MarketplaceGUI extends JFrame {
 
     private DefaultTableModel tableModel;
     private JTable productTable;
-    private JTextField txtSku;
-    private JTextField txtQty;
+    private JTextField txtSku, txtQty;
+    private JTextField txtNewSku, txtNewTitle, txtNewPrice, txtNewStock, txtNewVendor;
     private JTextArea txtLog;
     private JLabel lblStatus;
 
     public MarketplaceGUI() {
         super("Multi-Vendor Artisans E-Commerce Platform (SDG 8 & 9)");
-        setSize(900, 600);
+        setSize(950, 680);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout(8, 8));
@@ -38,20 +38,19 @@ public class MarketplaceGUI extends JFrame {
             socket = new Socket(HOST, PORT);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream(), true);
-            String initial = in.readLine();
-            System.out.println("[GUI NET] " + initial);
+            in.readLine(); // initial greeting
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this, 
-                "Could not connect to MarketplaceServer on port " + PORT + ".\nMake sure the server is running!", 
+                "Could not connect to MarketplaceServer on port " + PORT + ".\nMake sure server is running!", 
                 "Connection Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void buildUI() {
-        // --- Top Banner ---
+        // --- Top Header ---
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.setBackground(new Color(30, 41, 59));
-        JLabel title = new JLabel("  Handmade Artisans Marketplace — Client Portal", JLabel.LEFT);
+        JLabel title = new JLabel("  Handmade Artisans Marketplace — Multi-Tier Portal", JLabel.LEFT);
         title.setFont(new Font("SansSerif", Font.BOLD, 16));
         title.setForeground(Color.WHITE);
         title.setPreferredSize(new Dimension(500, 45));
@@ -62,82 +61,89 @@ public class MarketplaceGUI extends JFrame {
         topPanel.add(lblStatus, BorderLayout.EAST);
         add(topPanel, BorderLayout.NORTH);
 
-        // --- Center Catalog Table ---
+        // --- Tabbed Pane ---
+        JTabbedPane tabbedPane = new JTabbedPane();
+
+        // TAB 1: Customer View (Catalog + Ordering)
+        JPanel customerTab = new JPanel(new BorderLayout(8, 8));
+
         String[] columns = {"SKU", "Title", "Unit Price (Rs.)", "Stock Left", "Vendor ID"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) { return false; }
+            public boolean isCellEditable(int row, int col) { return false; }
         };
         productTable = new JTable(tableModel);
         productTable.setRowHeight(24);
-        productTable.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        productTable.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
-        productTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-
         productTable.getSelectionModel().addListSelectionListener(e -> {
             int row = productTable.getSelectedRow();
-            if (row != -1) {
-                txtSku.setText(tableModel.getValueAt(row, 0).toString());
-            }
+            if (row != -1) txtSku.setText(tableModel.getValueAt(row, 0).toString());
         });
+        customerTab.add(new JScrollPane(productTable), BorderLayout.CENTER);
 
-        JScrollPane tableScroll = new JScrollPane(productTable);
-        tableScroll.setBorder(BorderFactory.createTitledBorder("Live Marketplace Catalog"));
+        JPanel orderPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 8));
+        orderPanel.setBorder(BorderFactory.createTitledBorder("Place Order (Atomic Stock Decrement)"));
+        orderPanel.add(new JLabel("Selected SKU:"));
+        txtSku = new JTextField(8);
+        orderPanel.add(txtSku);
+        orderPanel.add(new JLabel("Quantity:"));
+        txtQty = new JTextField("1", 5);
+        orderPanel.add(txtQty);
 
-        // --- South Panel: Order Controls & Logs ---
-        JPanel southPanel = new JPanel(new GridLayout(1, 2, 8, 8));
-        southPanel.setPreferredSize(new Dimension(900, 220));
-
-        // Order Action Form
-        JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBorder(BorderFactory.createTitledBorder("Place Order (Atomic Stock Decrement)"));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(6, 6, 6, 6);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        gbc.gridx = 0; gbc.gridy = 0;
-        formPanel.add(new JLabel("Selected SKU:"), gbc);
-        gbc.gridx = 1;
-        txtSku = new JTextField(10);
-        formPanel.add(txtSku, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 1;
-        formPanel.add(new JLabel("Quantity:"), gbc);
-        gbc.gridx = 1;
-        txtQty = new JTextField("1", 10);
-        formPanel.add(txtQty, gbc);
-
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 0));
         JButton btnOrder = new JButton("Submit Order");
         btnOrder.setBackground(new Color(16, 185, 129));
-        btnOrder.setForeground(Color.BLACK);
         btnOrder.addActionListener(e -> handleOrder());
-        btnPanel.add(btnOrder);
+        orderPanel.add(btnOrder);
 
-        JButton btnRefresh = new JButton("Refresh");
+        JButton btnRefresh = new JButton("Refresh Catalog");
         btnRefresh.addActionListener(e -> refreshCatalog());
-        btnPanel.add(btnRefresh);
+        orderPanel.add(btnRefresh);
 
         JButton btnWallets = new JButton("View Wallets (SDG 8)");
         btnWallets.addActionListener(e -> fetchWallets());
-        btnPanel.add(btnWallets);
+        orderPanel.add(btnWallets);
 
-        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
-        formPanel.add(btnPanel, gbc);
+        customerTab.add(orderPanel, BorderLayout.SOUTH);
+        tabbedPane.addTab("🛒 Customer Catalog & Checkout", customerTab);
 
-        southPanel.add(formPanel);
+        // TAB 2: Vendor Portal (Upload New Product)
+        JPanel vendorTab = new JPanel(new GridBagLayout());
+        vendorTab.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        GridBagConstraints g = new GridBagConstraints();
+        g.insets = new Insets(8, 8, 8, 8);
+        g.fill = GridBagConstraints.HORIZONTAL;
 
-        // Activity Log Console
-        txtLog = new JTextArea();
+        g.gridx = 0; g.gridy = 0; vendorTab.add(new JLabel("Product SKU (e.g. SKU-105):"), g);
+        g.gridx = 1; txtNewSku = new JTextField(15); vendorTab.add(txtNewSku, g);
+
+        g.gridx = 0; g.gridy = 1; vendorTab.add(new JLabel("Product Title:"), g);
+        g.gridx = 1; txtNewTitle = new JTextField(15); vendorTab.add(txtNewTitle, g);
+
+        g.gridx = 0; g.gridy = 2; vendorTab.add(new JLabel("Unit Price (Rs.):"), g);
+        g.gridx = 1; txtNewPrice = new JTextField(15); vendorTab.add(txtNewPrice, g);
+
+        g.gridx = 0; g.gridy = 3; vendorTab.add(new JLabel("Stock Quantity:"), g);
+        g.gridx = 1; txtNewStock = new JTextField(15); vendorTab.add(txtNewStock, g);
+
+        g.gridx = 0; g.gridy = 4; vendorTab.add(new JLabel("Vendor ID (e.g. VEND-001):"), g);
+        g.gridx = 1; txtNewVendor = new JTextField(15); vendorTab.add(txtNewVendor, g);
+
+        JButton btnUpload = new JButton("Upload Product to Live Network");
+        btnUpload.setBackground(new Color(59, 130, 246));
+        btnUpload.addActionListener(e -> handleAddProduct());
+        g.gridx = 0; g.gridy = 5; g.gridwidth = 2;
+        vendorTab.add(btnUpload, g);
+
+        tabbedPane.addTab("📦 Vendor Inventory Manager", vendorTab);
+        add(tabbedPane, BorderLayout.CENTER);
+
+        // --- Bottom Activity Audit Log ---
+        txtLog = new JTextArea(5, 50);
         txtLog.setEditable(false);
         txtLog.setFont(new Font("Monospaced", Font.PLAIN, 12));
         txtLog.setBackground(new Color(248, 250, 252));
         JScrollPane logScroll = new JScrollPane(txtLog);
         logScroll.setBorder(BorderFactory.createTitledBorder("Transaction Audit Log"));
-        southPanel.add(logScroll);
-
-        add(tableScroll, BorderLayout.CENTER);
-        add(southPanel, BorderLayout.SOUTH);
+        add(logScroll, BorderLayout.SOUTH);
     }
 
     private synchronized void refreshCatalog() {
@@ -152,9 +158,7 @@ public class MarketplaceGUI extends JFrame {
                 for (String item : items) {
                     if (item.trim().isEmpty()) continue;
                     String[] fields = item.split(":");
-                    if (fields.length >= 5) {
-                        tableModel.addRow(fields);
-                    }
+                    if (fields.length >= 5) tableModel.addRow(fields);
                 }
                 log("Catalog refreshed from server.");
             }
@@ -166,33 +170,60 @@ public class MarketplaceGUI extends JFrame {
     private synchronized void handleOrder() {
         String sku = txtSku.getText().trim();
         String qtyStr = txtQty.getText().trim();
-
         if (sku.isEmpty() || qtyStr.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please enter SKU and Quantity.", "Input Error", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Enter SKU and Quantity.", "Input Error", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
         try {
             int qty = Integer.parseInt(qtyStr);
-            if (qty <= 0) {
-                JOptionPane.showMessageDialog(this, "Quantity must be greater than 0.", "Input Error", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-
             out.println("ORDER|" + sku + "|" + qty);
             String response = in.readLine();
             log(response);
-
             if (response != null && response.startsWith("SUCCESS|")) {
                 JOptionPane.showMessageDialog(this, response.substring(8), "Order Success", JOptionPane.INFORMATION_MESSAGE);
                 refreshCatalog();
             } else if (response != null && response.startsWith("ERROR|")) {
                 JOptionPane.showMessageDialog(this, response.substring(6), "Order Error", JOptionPane.ERROR_MESSAGE);
             }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Invalid quantity: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private synchronized void handleAddProduct() {
+        String sku = txtNewSku.getText().trim();
+        String title = txtNewTitle.getText().trim();
+        String price = txtNewPrice.getText().trim();
+        String stock = txtNewStock.getText().trim();
+        String vendor = txtNewVendor.getText().trim();
+
+        if (sku.isEmpty() || title.isEmpty() || price.isEmpty() || stock.isEmpty() || vendor.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please fill in all product fields.", "Input Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+            Double.parseDouble(price);
+            Integer.parseInt(stock);
+            out.println("ADD_PRODUCT|" + sku + "|" + title + "|" + price + "|" + stock + "|" + vendor);
+            String response = in.readLine();
+            log(response);
+
+            if (response != null && response.startsWith("SUCCESS|")) {
+                JOptionPane.showMessageDialog(this, response.substring(8), "Product Added", JOptionPane.INFORMATION_MESSAGE);
+                txtNewSku.setText("");
+                txtNewTitle.setText("");
+                txtNewPrice.setText("");
+                txtNewStock.setText("");
+                txtNewVendor.setText("");
+                refreshCatalog();
+            } else if (response != null && response.startsWith("ERROR|")) {
+                JOptionPane.showMessageDialog(this, response.substring(6), "Upload Failed", JOptionPane.ERROR_MESSAGE);
+            }
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Quantity must be a valid integer.", "Input Error", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Price and Stock must be numeric.", "Input Error", JOptionPane.WARNING_MESSAGE);
         } catch (IOException e) {
-            log("Order communication failed: " + e.getMessage());
+            log("Network error: " + e.getMessage());
         }
     }
 
@@ -217,8 +248,6 @@ public class MarketplaceGUI extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            new MarketplaceGUI().setVisible(true);
-        });
+        SwingUtilities.invokeLater(() -> new MarketplaceGUI().setVisible(true));
     }
 }

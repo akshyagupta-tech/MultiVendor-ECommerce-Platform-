@@ -100,6 +100,43 @@ public class ClientHandler implements Runnable {
                         }
                         break;
 
+                    case "ADD_PRODUCT":
+                        if (parts.length < 6) {
+                            out.println("ERROR|Usage: ADD_PRODUCT|<SKU>|<Title>|<Price>|<Stock>|<VendorId>");
+                            break;
+                        }
+                        try {
+                            String newSku = parts[1].trim();
+                            String newTitle = parts[2].trim();
+                            double newPrice = Double.parseDouble(parts[3].trim());
+                            int newStock = Integer.parseInt(parts[4].trim());
+                            String newVendor = parts[5].trim();
+
+                            synchronized (catalog) {
+                                for (Product p : catalog) {
+                                    if (p.getSku().equalsIgnoreCase(newSku)) {
+                                        out.println("ERROR|SKU already exists: " + newSku);
+                                        return;
+                                    }
+                                }
+                                Product np = new Product(newSku, newTitle, newPrice, newStock, newVendor);
+                                catalog.add(np);
+                                FileStorageService.saveProducts(catalog);
+                            }
+
+                            synchronized (vendorBalances) {
+                                if (!vendorBalances.containsKey(newVendor)) {
+                                    vendorBalances.put(newVendor, 0.0);
+                                    FileStorageService.saveWallets(vendorBalances);
+                                }
+                            }
+
+                            out.println("SUCCESS|Added product " + newSku + " (" + newTitle + ") to catalog!");
+                        } catch (Exception e) {
+                            out.println("ERROR|Invalid product parameters: " + e.getMessage());
+                        }
+                        break;
+
                     case "BALANCES":
                         StringBuilder bal = new StringBuilder("BALANCES|");
                         synchronized (vendorBalances) {
@@ -111,7 +148,7 @@ public class ClientHandler implements Runnable {
                         break;
 
                     default:
-                        out.println("ERROR|Unknown command. Supported: LIST, ORDER|<SKU>|<QTY>, BALANCES, EXIT");
+                        out.println("ERROR|Unknown command.");
                 }
             }
         } catch (IOException e) {
